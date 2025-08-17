@@ -1,0 +1,1 @@
+{"seed": 42, "n_folds": 5, "clf": "LogReg(saga)+Calibrated(isotonic)", "C": 1.0, "vector": "mean_pool_768", "final_threshold_oof": 0.46535353535353535, "final_threshold_chosen": 0.41535353535353536}
