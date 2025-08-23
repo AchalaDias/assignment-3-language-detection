@@ -1,0 +1,1 @@
+{"cols": ["p_base", "k_xA", "k_xH", "diff_xA_xH", "glob_mAA_mHH"], "thr_oof": 0.4406060606060606, "thr_chosen": 0.4206060606060606, "uses": "p_base + MMD features (k_xA,k_xH,diff,glob)"}
