@@ -1,0 +1,119 @@
+Project Report: Distinguishing AI-Generated and Human-Written Text Using Embedding Analysis and Hybrid Deep Learning
+Introduction
+
+The increasing prevalence of large language models (LLMs) has introduced the critical challenge of reliably distinguishing AI-generated text from human writing. This task has direct implications for academic integrity, digital forensics, and misinformation detection. The dataset for this project consists of sentence-level embeddings derived from the roberta-base-openai-detector, with each text represented as a (100×768) tensor. The primary objective was to design a robust pipeline for detecting whether a given text was AI-generated or human-written.
+
+The workflow was structured in three major stages: (1) extensive exploratory data analysis (EDA) to understand distributional differences between human and AI embeddings, (2) feature engineering informed by these analyses, and (3) the development and training of a novel hybrid neural architecture, UltraHybridBalanced++ v2, integrating both deep representation learning and handcrafted features.
+
+Methods
+Step 0 — Data Preparation
+
+Training data: train_human.npy (8,161 samples) and train_ai.npy (8,161 samples), yielding a balanced dataset of 16,322 samples.
+
+Validation data: validation.jsonl, from which 220 valid (100×768) embeddings were extracted.
+
+Test data: test_features.jsonl, producing 1,686 usable embeddings.
+
+Step 1 — Exploratory Data Analysis (EDA)
+
+The EDA phase uncovered critical insights into the structural differences between human and AI embeddings:
+
+Norm analysis: AI embeddings displayed a slightly higher mean L2 norm (4.64 vs. 4.25 for human), with tighter variance and stronger frontloading in early token positions.
+
+PCA projection: Human embeddings were more dispersed, while AI embeddings formed a compressed, cone-like structure, indicating reduced diversity.
+
+Cosine similarity: Human samples exhibited broader variance, while AI clustered tightly around its centroid.
+
+Train vs. validation comparison: Validation embeddings aligned more closely with human embeddings overall but exhibited AI-like frontloading tendencies.
+
+Variance analysis: AI and validation samples showed higher token-level variance, suggesting more expressive but potentially noisier embeddings.
+
+Advanced EDA (Steps 2.1–2.6):
+
+Maximum Mean Discrepancy (MMD): validation closer to human distribution.
+
+Cosine heatmaps: majority of validation samples aligned with the AI centroid.
+
+Token decomposition: AI emphasized early tokens, humans more balanced.
+
+Positional entropy: AI more cohesive (sharper), humans more spread.
+
+UMAP/t-SNE projections: confirmed partial separability, but substantial overlap.
+
+Cross-class similarity: Human–Val (0.997), AI–Val (0.990), Human–AI (0.978).
+
+These analyses directly motivated the engineered features used in the model.
+
+Step 2 — Feature Engineering
+
+Feature engineering transformed insights from EDA into numerical predictors:
+
+Variance masking: top-64 high-variance dimensions zeroed to reduce noise.
+
+Centroid similarities: cosine similarity to human and AI centroids.
+
+Segment norms: early, mid, and late token L2 norms.
+
+Token variance and sharpness: statistical descriptors of embedding spread.
+
+Resulting feature space: ~3,076 dimensions per sample, scaled with StandardScaler.
+
+Step 3 — Model Architecture (UltraHybridBalanced++ v2)
+
+The final model integrated token embeddings and engineered features within a unified hybrid architecture:
+
+Regularization: Gaussian noise injection, channel dropout, DropPath (stochastic depth).
+
+Transformer branch: two layers, four attention heads, with AttentionPooling.
+
+CNN branch: depthwise-separable 1D convolutions with gated linear units (GLU) and Squeeze-Excitation.
+
+BiGRU branch: bidirectional GRU (160 hidden units per direction) with AttentionPooling.
+
+FeatureGate: adaptive gating mechanism to weigh engineered features.
+
+Fusion & head: concatenation of all branches → LayerNorm → dense layers (256→64) → multi-sample dropout → output logit.
+
+Step 4 — Training Setup
+
+Optimizer: AdamW.
+
+Scheduler: OneCycleLR with warmup.
+
+Loss function: BCEWithLogitsLoss.
+
+Training regime: 30 epochs, batch size 128, weight decay 1e-4.
+
+Early stopping: patience = 6 epochs (based on validation AUC).
+
+Mixup augmentation applied on both tokens and engineered features (p = 0.35, α = 0.4).
+
+Results
+
+Training performance:
+
+ROC-AUC = 0.997
+
+Accuracy = 97.2%
+
+F1 = 0.973
+
+Validation performance:
+
+ROC-AUC = 0.962
+
+Accuracy = 89.5%
+
+F1 = 0.898
+
+Threshold tuning: The optimal decision threshold was adjusted from 0.50 to 0.60, increasing validation F1 to 0.901.
+
+Test inference: Preprocessing (variance masking + feature scaling) applied consistently. Final predictions on 1,686 test samples were exported to submission format with columns id, probability, and prediction.
+
+Conclusion
+
+This project successfully demonstrated a comprehensive pipeline for AI vs. human text detection, leveraging both statistical embedding analysis and hybrid deep learning architectures. The EDA stage revealed systematic distributional differences — particularly in token norm patterns, variance structure, and entropy — which were distilled into meaningful engineered features.
+
+By integrating these handcrafted features with a transformer–CNN–BiGRU hybrid model, the UltraHybridBalanced++ v2 achieved ROC-AUC of 0.962 and F1 ≈ 0.90 on the validation set, outperforming baseline centroid or logistic regression approaches. The final test submission produced reliable predictions for 1,686 unseen samples, validating the robustness of the pipeline.
+
+Overall, the work illustrates how combining domain-informed feature engineering with advanced hybrid architectures can meaningfully improve the detection of AI-generated text in challenging, high-dimensional embedding spaces.
