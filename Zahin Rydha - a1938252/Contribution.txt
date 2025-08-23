@@ -1,0 +1,9 @@
+First, I made a reproducible config (CFG) with fixed seeds and device selection. Then, I wrote robust data loaders that would standardize all inputs to (T=100, D=768). One thing that stands out is that I found and fixed the shape bug in validation/test JSONL files. Some items were coming in as (k, 100, 768), and to fix this, I used pad_or_trunc_any that flattens the segment axis and then pads/truncates so that training can always get a clean tensor.
+
+The training set was finally 8,161 AI + 8,161 human samples (total 16,322) with 20 validation items and 180 test IDs. To have a quick glance at the separability, I converted sentence embeddings to document level (mean+max+std) and presented a PCA scatter.
+
+My initial first models were from pooled-feature baselines: Logistic Regression (with StandardScaler, StratifiedKFold=5, and balanced class weights) and Random Forest. They were able to show a good performance on CV (LogReg ≈ 0.8852±0.0061 acc, 0.8856±0.0068 F1; RF ≈ 0.8425±0.0051 acc, 0.8421±0.0054 F1), but on the very small validation split, the metrics had more noise (LogReg acc 0.55, AUC 0.62; RF acc 0.60, AUC 0.585).
+
+One way to get the sequence info across sentences was to build from the scratch two deep models: a BiGRU with self-attention pooling and a light Transformer (positional encoding + 2-layer encoder + attention pooling). The models were trained using AdamW (lr=1e-3) optimizer, BCEWithLogitsLoss, gradient clipping (1.0), batch size 32 and early stopping on validation F1 (patience=4). The best/final checkpoints were saved to artifacts/.
+
+For Kaggle submissions, I made multiple CSVs and I got result for submission_bigru.csv with a score of 0.66242 and submission_logreg.csv got score of 0.60923.
